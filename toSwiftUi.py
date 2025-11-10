@@ -57,6 +57,48 @@ def stack_head(layout: dict, scroll: Optional[str]):
         return ("ScrollView(.vertical, showsIndicators: true)", f"VStack({sp_arg})")
     return (f"VStack({sp_arg})", None)
 
+def calculate_swiftui_alignment(position):
+    """
+    position から SwiftUI の Alignment を計算
+    """
+    if not position:
+        return ".center"
+
+    has_left = "left" in position
+    has_right = "right" in position
+    has_top = "top" in position
+    has_bottom = "bottom" in position
+
+    # 垂直方向
+    if has_top and not has_bottom:
+        v_align = "top"
+    elif has_bottom and not has_top:
+        v_align = "bottom"
+    else:
+        v_align = "center"
+
+    # 水平方向
+    if has_left and not has_right:
+        h_align = "Leading"
+    elif has_right and not has_left:
+        h_align = "Trailing"
+    else:
+        h_align = ""
+
+    # 組み合わせ
+    if v_align == "top":
+        if h_align == "Leading": return ".topLeading"
+        if h_align == "Trailing": return ".topTrailing"
+        return ".top"
+    elif v_align == "bottom":
+        if h_align == "Leading": return ".bottomLeading"
+        if h_align == "Trailing": return ".bottomTrailing"
+        return ".bottom"
+    else:  # center
+        if h_align == "Leading": return ".leading"
+        if h_align == "Trailing": return ".trailing"
+        return ".center"
+
 def stringify_prop(k, v):
     if isinstance(v, bool):  return f"{k}: {str(v).lower()}"
     if isinstance(v, (int, float)): return f"{k}: {int(round(v))}"
@@ -78,8 +120,14 @@ def emit_node(n, level, flow_dir=None):
 
     t = n.get("type")
     if t == "TEXT":
-        txt = (n.get("text") or "").replace('"','\\"')
-        return f'{ind}Text("{txt}")'
+        txt = n.get("text") or ""
+        # {{...}} を展開
+        if txt.startswith("{{") and txt.endswith("}}"):
+            expr = txt[2:-2].strip()
+            return f'{ind}Text({expr})'
+        else:
+            esc = txt.replace('"','\\"')
+            return f'{ind}Text("{esc}")'
 
     if t == "SPACER":
         return f"{ind}Spacer()"
@@ -141,13 +189,16 @@ def emit_node(n, level, flow_dir=None):
 
     if t == "OVERLAY":
         pos = n.get("position") or {}
+        # Alignment を計算
+        alignment = calculate_swiftui_alignment(pos)
+        # padding を計算
         pad = ""
         if "right" in pos:  pad += f".padding(.trailing, {px(pos['right'])})"
         if "left"  in pos:  pad += f".padding(.leading, {px(pos['left'])})"
         if "top"   in pos:  pad += f".padding(.top, {px(pos['top'])})"
         if "bottom" in pos: pad += f".padding(.bottom, {px(pos['bottom'])})"
         child = emit_node(n.get("child") or {}, level+1, None)
-        return f"{ind}ZStack(alignment: .bottomTrailing) {{\n{child}\n{ind}}}{pad}"
+        return f"{ind}ZStack(alignment: {alignment}) {{\n{child}\n{ind}}}{pad}"
 
     return f"{ind}// TODO unsupported type: {t}"
 

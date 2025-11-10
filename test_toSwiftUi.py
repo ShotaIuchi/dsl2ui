@@ -262,5 +262,103 @@ class TestToSwiftUi(unittest.TestCase):
         self.assertIn("ZaButton(label: \"新規追加\")", output)
         self.assertIn("maxWidth: .infinity", output)
 
+    def test_text_with_expression(self):
+        """TEXT ノードが {{}} 式を展開するテスト"""
+        node = {"type": "TEXT", "text": "{{item.name}}"}
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertEqual(result, "  Text(item.name)")
+
+    def test_text_with_string_literal(self):
+        """TEXT ノードが通常の文字列をそのまま出力するテスト"""
+        node = {"type": "TEXT", "text": "Hello World"}
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertEqual(result, '  Text("Hello World")')
+
+    def test_overlay_alignment_bottom_trailing(self):
+        """OVERLAY の alignment が .bottomTrailing になるテスト"""
+        node = {
+            "type": "OVERLAY",
+            "position": {"right": 16, "bottom": 16},
+            "child": {"type": "TEXT", "text": "FAB"}
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ZStack(alignment: .bottomTrailing)", result)
+
+    def test_overlay_alignment_top_leading(self):
+        """OVERLAY の alignment が .topLeading になるテスト"""
+        node = {
+            "type": "OVERLAY",
+            "position": {"left": 8, "top": 8},
+            "child": {"type": "TEXT", "text": "Badge"}
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ZStack(alignment: .topLeading)", result)
+
+    def test_overlay_alignment_top_trailing(self):
+        """OVERLAY の alignment が .topTrailing になるテスト"""
+        node = {
+            "type": "OVERLAY",
+            "position": {"right": 8, "top": 8},
+            "child": {"type": "TEXT", "text": "Badge"}
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ZStack(alignment: .topTrailing)", result)
+
+    def test_overlay_alignment_bottom_leading(self):
+        """OVERLAY の alignment が .bottomLeading になるテスト"""
+        node = {
+            "type": "OVERLAY",
+            "position": {"left": 8, "bottom": 8},
+            "child": {"type": "TEXT", "text": "Badge"}
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ZStack(alignment: .bottomLeading)", result)
+
+    def test_overlay_alignment_center(self):
+        """OVERLAY の alignment が .center になるテスト"""
+        node = {
+            "type": "OVERLAY",
+            "position": {"left": 8, "right": 8, "top": 8, "bottom": 8},
+            "child": {"type": "TEXT", "text": "Center"}
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ZStack(alignment: .center)", result)
+
+    def test_calculate_swiftui_alignment(self):
+        """calculate_swiftui_alignment 関数のテスト"""
+        # topLeading
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"left": 8, "top": 8}), ".topLeading")
+        # topTrailing
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"right": 8, "top": 8}), ".topTrailing")
+        # bottomLeading
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"left": 8, "bottom": 8}), ".bottomLeading")
+        # bottomTrailing
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"right": 8, "bottom": 8}), ".bottomTrailing")
+        # center
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({}), ".center")
+        # top
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"top": 8}), ".top")
+        # bottom
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"bottom": 8}), ".bottom")
+        # leading
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"left": 8}), ".leading")
+        # trailing
+        self.assertEqual(toSwiftUi.calculate_swiftui_alignment({"right": 8}), ".trailing")
+
+    def test_repeat_with_foreach(self):
+        """repeat を使った ForEach のテスト"""
+        node = {
+            "type": "FRAME",
+            "layout": {"direction": "VERTICAL", "spacing": 8},
+            "repeat": {"for": "items", "as": "item"},
+            "children": [
+                {"type": "TEXT", "text": "{{item.name}}"}
+            ]
+        }
+        result = toSwiftUi.emit_node(node, 1)
+        self.assertIn("ForEach(items.indices", result)
+        self.assertIn("let item = items[idx]", result)
+        self.assertIn("Text(item.name)", result)
+
 if __name__ == "__main__":
     unittest.main()
