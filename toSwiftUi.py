@@ -16,11 +16,21 @@ def to_pascal(s: str) -> str:
     return "".join(p[:1].upper() + p[1:] for p in parts) or "GeneratedScreen"
 
 def to_swift_name(name: str) -> str:
-    parts = [p for p in re.sub(r"[-_]+"," ", name).split("/") if p]
-    out = parts[0] if parts else "Unknown"
-    for p in parts[1:]:
-        out += p[:1].upper() + p[1:]
+    # "Za/FooBar" -> "ZaFooBar", "My Component/Sub Page" -> "MyComponentSubPage"
+    # 階層区切りで分割
+    parts = [p for p in name.split("/") if p]
+    result_parts = []
+    for part in parts:
+        # 各パート内のハイフン・アンダースコア・スペースで単語分割
+        words = [w for w in re.sub(r"[-_\s]+", " ", part).split() if w]
+        # PascalCase化
+        pascal = "".join(w[:1].upper() + w[1:] for w in words)
+        result_parts.append(pascal)
+    # 階層を結合
+    out = "".join(result_parts) if result_parts else "Unknown"
+    # 非英数字を除去（念のため）
     out = re.sub(r"[^A-Za-z0-9]", "", out)
+    # 数字始まりの場合は先頭にアンダースコアを追加
     if re.match(r"^[0-9]", out): out = "_" + out
     return out
 
